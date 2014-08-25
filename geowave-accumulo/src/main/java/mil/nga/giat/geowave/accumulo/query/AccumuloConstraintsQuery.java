@@ -29,6 +29,7 @@ public class AccumuloConstraintsQuery extends
 {
 	protected final MultiDimensionalNumericData constraints;
 	protected final List<DistributableQueryFilter> distributableFilters;
+	protected boolean queryFiltersEnabled;
 
 	public AccumuloConstraintsQuery(
 			final Index index,
@@ -90,6 +91,21 @@ public class AccumuloConstraintsQuery extends
 			final List<ByteArrayId> adapterIds,
 			final Index index,
 			final MultiDimensionalNumericData constraints,
+			final List<QueryFilter> queryFilters ) {
+		this(
+				adapterIds,
+				index,
+				constraints,
+				queryFilters,
+				null,
+				new String[0]);
+
+	}
+
+	public AccumuloConstraintsQuery(
+			final List<ByteArrayId> adapterIds,
+			final Index index,
+			final MultiDimensionalNumericData constraints,
 			final List<QueryFilter> queryFilters,
 			final String[] authorizations ) {
 		this(
@@ -130,13 +146,13 @@ public class AccumuloConstraintsQuery extends
 		distributableFilters.add(
 				0,
 				new DedupeFilter());
-
+		queryFiltersEnabled = true;
 	}
 
 	@Override
 	protected void addScanIteratorSettings(
 			final ScannerBase scanner ) {
-		if ((distributableFilters != null) && !distributableFilters.isEmpty()) {
+		if ((distributableFilters != null) && !distributableFilters.isEmpty() && queryFiltersEnabled) {
 			final IteratorSetting iteratorSettings = new IteratorSetting(
 					QueryFilterIterator.QUERY_ITERATOR_PRIORITY,
 					QueryFilterIterator.QUERY_ITERATOR_NAME,
@@ -166,6 +182,15 @@ public class AccumuloConstraintsQuery extends
 		return AccumuloUtils.constraintsToByteArrayRanges(
 				constraints,
 				index.getIndexStrategy());
+	}
+
+	public boolean isQueryFiltersEnabled() {
+		return queryFiltersEnabled;
+	}
+
+	public void setQueryFiltersEnabled(
+			boolean queryFiltersEnabled ) {
+		this.queryFiltersEnabled = queryFiltersEnabled;
 	}
 
 	private static SplitFilterLists splitList(

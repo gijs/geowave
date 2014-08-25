@@ -184,7 +184,7 @@ public class AccumuloIndexWriter implements
 						accumuloOperations.attachIterators(
 								indexName,
 								accumuloOptions.isCreateTable(),
-								((AttachedIteratorDataAdapter) writableAdapter).getAttachedIteratorConfig());
+								((AttachedIteratorDataAdapter) writableAdapter).getAttachedIteratorConfig(index));
 					}
 				}
 				if (accumuloOptions.isUseLocalityGroups() && !accumuloOperations.localityGroupExists(
