@@ -15,8 +15,7 @@ import org.apache.accumulo.core.client.TableNotFoundException;
  * This interface is used as a basis for establishing connections for queries
  * and ingest processes used by the index classes.
  */
-public interface AccumuloOperations
-{
+public interface AccumuloOperations {
 
 	/**
 	 * Creates a new batch deleter that can be used by an index
@@ -31,9 +30,8 @@ public interface AccumuloOperations
 	 * @throws TableNotFoundException
 	 *             The table does not exist in this Accumulo instance
 	 */
-	public BatchDeleter createBatchDeleter(
-			final String tableName,
-			final String... additionalAuthorizations )
+	public BatchDeleter createBatchDeleter(final String tableName,
+			final String... additionalAuthorizations)
 			throws TableNotFoundException;
 
 	/**
@@ -50,10 +48,8 @@ public interface AccumuloOperations
 	 * @throws TableNotFoundException
 	 *             The table does not exist in this Accumulo instance
 	 */
-	public BatchScanner createBatchScanner(
-			final String tableName,
-			String... additionalAuthorizations )
-			throws TableNotFoundException;
+	public BatchScanner createBatchScanner(final String tableName,
+			String... additionalAuthorizations) throws TableNotFoundException;
 
 	/**
 	 * Creates a new scanner that can be used by an index
@@ -69,9 +65,8 @@ public interface AccumuloOperations
 	 * @throws TableNotFoundException
 	 *             The table does not exist in this Accumulo instance
 	 */
-	public Scanner createScanner(
-			final String tableName,
-			final String... additionalAuthorizations )
+	public Scanner createScanner(final String tableName,
+			final String... additionalAuthorizations)
 			throws TableNotFoundException;
 
 	/**
@@ -82,8 +77,7 @@ public interface AccumuloOperations
 	 *            implementation of the factory will allow for a table namespace
 	 *            to prefix this name
 	 */
-	public void createTable(
-			final String tableName );
+	public void createTable(final String tableName);
 
 	/**
 	 * Creates a new writer that can be used by an index. The basic
@@ -100,8 +94,7 @@ public interface AccumuloOperations
 	 * @throws TableNotFoundException
 	 *             The table does not exist in this Accumulo instance
 	 */
-	public Writer createWriter(
-			final String tableName )
+	public Writer createWriter(final String tableName)
 			throws TableNotFoundException;
 
 	/**
@@ -123,9 +116,7 @@ public interface AccumuloOperations
 	 * @throws TableNotFoundException
 	 *             The table does not exist in this Accumulo instance
 	 */
-	public Writer createWriter(
-			final String tableName,
-			final boolean createTable )
+	public Writer createWriter(final String tableName, final boolean createTable)
 			throws TableNotFoundException;
 
 	/**
@@ -148,10 +139,8 @@ public interface AccumuloOperations
 	 * @throws TableNotFoundException
 	 *             The table does not exist in this Accumulo instance
 	 */
-	public boolean attachIterators(
-			final String tableName,
-			final boolean createTable,
-			final IteratorConfig[] iterators )
+	public boolean attachIterators(final String tableName,
+			final boolean createTable, final IteratorConfig[] iterators)
 			throws TableNotFoundException;
 
 	/**
@@ -166,8 +155,7 @@ public interface AccumuloOperations
 	 * @return Returns true if the table was found and dropped, false if it was
 	 *         not found or not dropped successfully
 	 */
-	public boolean deleteTable(
-			final String tableName );
+	public boolean deleteTable(final String tableName);
 
 	/**
 	 * Checks for the existence of the table with the given name
@@ -178,8 +166,7 @@ public interface AccumuloOperations
 	 *            to prefix this name
 	 * @return Returns true if the table was found, false if it was not found
 	 */
-	public boolean tableExists(
-			final String tableName );
+	public boolean tableExists(final String tableName);
 
 	/**
 	 * Checks for the existence of the locality group with the given name,
@@ -194,10 +181,8 @@ public interface AccumuloOperations
 	 * @return Returns true if the locality group was found, false if it was not
 	 *         found
 	 */
-	public boolean localityGroupExists(
-			final String tableName,
-			final byte[] localityGroup )
-			throws AccumuloException,
+	public boolean localityGroupExists(final String tableName,
+			final byte[] localityGroup) throws AccumuloException,
 			TableNotFoundException;
 
 	/**
@@ -212,12 +197,22 @@ public interface AccumuloOperations
 	 *            The name of the locality group
 	 * @throws AccumuloSecurityException
 	 */
-	public void addLocalityGroup(
-			final String tableName,
-			final byte[] localityGroup )
-			throws AccumuloException,
-			TableNotFoundException,
-			AccumuloSecurityException;
+	public void addLocalityGroup(final String tableName,
+			final byte[] localityGroup) throws AccumuloException,
+			TableNotFoundException, AccumuloSecurityException;
+
+	/**
+	 * Removes all locality groups form the table of the given name
+	 * 
+	 * @param tableName
+	 * @param localityGroup
+	 * @throws AccumuloException
+	 * @throws AccumuloSecurityException
+	 * @throws TableNotFoundException
+	 */
+	public void clearLocalityGroup(final String tableName,
+			final byte[] localityGroup) throws AccumuloException,
+			TableNotFoundException, AccumuloSecurityException;
 
 	/**
 	 * Drops all tables in the given namespace. Returns whether any tables were
@@ -247,11 +242,8 @@ public interface AccumuloOperations
 	 *         false if nothing was found or the row was not dropped
 	 *         successfully
 	 */
-	public boolean delete(
-			final String tableName,
-			final ByteArrayId rowId,
-			String columnFamily,
-			String columnQualifier );
+	public boolean delete(final String tableName, final ByteArrayId rowId,
+			String columnFamily, String columnQualifier);
 
 	/**
 	 * Drops the specified row from the specified table. Returns whether the
@@ -273,12 +265,10 @@ public interface AccumuloOperations
 	 *         false if nothing was found or the row was not dropped
 	 *         successfully
 	 */
-	public boolean delete(
-			final String tableName,
-			final List<ByteArrayId> rowId,
-			final String columnFamily,
+	public boolean delete(final String tableName,
+			final List<ByteArrayId> rowId, final String columnFamily,
 			final String columnQualifier,
-			final String... additionalAuthorizations );
+			final String... additionalAuthorizations);
 
 	/**
 	 * 
@@ -293,10 +283,8 @@ public interface AccumuloOperations
 	 *            checks authorizations
 	 * @return
 	 */
-	public boolean deleteAll(
-			final String tableName,
-			final String columnFamily,
-			final String... additionalAuthorizations );
+	public boolean deleteAll(final String tableName, final String columnFamily,
+			final String... additionalAuthorizations);
 
 	/**
 	 * 
@@ -305,16 +293,13 @@ public interface AccumuloOperations
 	 * @return the number of rows in the table given the constraints by the
 	 *         provided authorizations
 	 */
-	public long getRowCount(
-			final String tableName,
-			String... additionalAuthorizations );
+	public long getRowCount(final String tableName,
+			String... additionalAuthorizations);
 
 	/**
 	 * 
 	 * Insure user has the given operations.
 	 */
-	public void insureAuthorization(
-			final String... authorizations )
-			throws AccumuloException,
-			AccumuloSecurityException;
+	public void insureAuthorization(final String... authorizations)
+			throws AccumuloException, AccumuloSecurityException;
 }

@@ -276,6 +276,8 @@
 		<module>geowave-analytics</module>
 		<module>geowave-deploy</module>
 		<module>geowave-test</module>
+		<module>geowave-services</module>
+		<module>geowave-utils</module>
 	</modules>
 
 	<repositories>
