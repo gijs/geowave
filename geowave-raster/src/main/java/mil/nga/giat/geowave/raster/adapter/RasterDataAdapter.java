@@ -1310,6 +1310,7 @@ public class RasterDataAdapter implements
 
 	@Override
 	public IteratorConfig[] getAttachedIteratorConfig(final Index index) {
+		final EnumSet<IteratorScope> visibilityCombinerScope = EnumSet.of(IteratorScope.scan);
 		final RasterTileCombinerConfig tileCombiner = new RasterTileCombinerConfig(
 				new IteratorSetting(
 						RASTER_TILE_COMBINER_PRIORITY,
