@@ -13,6 +13,8 @@ import java.util.Properties;
 import java.util.Set;
 
 import javax.servlet.ServletConfig;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
@@ -21,15 +23,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import mil.nga.giat.geowave.ingest.AbstractCommandLineDriver;
-import mil.nga.giat.geowave.ingest.OperationCommandLineOptions.Operation;
+import mil.nga.giat.geowave.ingest.IngestMain;
 import mil.nga.giat.geowave.services.IngestService;
 import mil.nga.giat.geowave.services.utils.ServiceUtils;
 
-import org.apache.commons.cli.BasicParser;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 
@@ -83,25 +80,33 @@ public class IngestServiceImpl implements
 	}
 
 	@Override
+	@POST
+	@Path("/local")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response localIngest(
 			final FormDataMultiPart multiPart ) {
 		ingest(
-				Operation.LOCAL_INGEST,
+				"localingest",
 				multiPart);
 		return Response.ok().build();
 	}
 
 	@Override
+	@POST
+	@Path("/hdfs")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response hdfsIngest(
 			final FormDataMultiPart multiPart ) {
 		ingest(
-				Operation.INGEST_FROM_HDFS,
+				"hdfsingest",
 				multiPart);
 		return Response.ok().build();
 	}
 
 	private void ingest(
-			final Operation operation,
+			final String ingestMethod,
 			final FormDataMultiPart multiPart ) {
 
 		// read the list of files
@@ -115,8 +120,14 @@ public class IngestServiceImpl implements
 
 		final String namespace = multiPart.getField(
 				"namespace").getValue();
-		final String visibility = multiPart.getField(
-				"visibility").getValue();
+		final String visibility = (multiPart.getField("visibility") != null) ? multiPart.getField(
+				"visibility").getValue() : null;
+		final String ingestType = (multiPart.getField("ingestType") != null) ? multiPart.getField(
+				"ingestType").getValue() : "geotools-vector";
+		final String dimType = (multiPart.getField("dimType") != null) ? multiPart.getField(
+				"dimType").getValue() : "spatial";
+		final boolean clear = (multiPart.getField("clear") != null) ? Boolean.parseBoolean(multiPart.getField(
+				"clear").getValue()) : false;
 
 		if ((namespace == null) || namespace.isEmpty()) {
 			throw new WebApplicationException(
@@ -157,104 +168,62 @@ public class IngestServiceImpl implements
 		}
 
 		// ingest the files
-		try {
-			if (operation == Operation.LOCAL_INGEST) {
-				runLocalIngest(
-						baseDir,
-						namespace,
-						visibility);
-			}
-			else if (operation == Operation.LOCAL_TO_HDFS_INGEST) {
-				runHdfsIngest(
-						baseDir,
-						namespace,
-						visibility);
-			}
-		}
-		catch (final ParseException e) {
-			throw new WebApplicationException(
-					Response.status(
-							Status.INTERNAL_SERVER_ERROR).entity(
-							"Ingest Failed" + e.getMessage()).build());
-		}
+		runIngest(
+				baseDir,
+				ingestMethod,
+				ingestType,
+				dimType,
+				namespace,
+				visibility,
+				clear);
 	}
 
-	private void runLocalIngest(
+	private void runIngest(
 			final File baseDir,
+			final String ingestMethod,
+			final String ingestType,
+			final String dimType,
 			final String namespace,
-			final String visibility )
-			throws ParseException {
-		final AbstractCommandLineDriver driver = Operation.LOCAL_INGEST.getDriver();
+			final String visibility,
+			final boolean clear ) {
 
 		final ArrayList<String> args = new ArrayList<String>();
-		args.add("--base");
+		args.add("-" + ingestMethod);
+		args.add("-t");
+		args.add(ingestType);
+		args.add("-b");
 		args.add(baseDir.getAbsolutePath());
-		args.add("--zookeepers");
+		args.add("-z");
 		args.add(zookeeperUrl);
-		args.add("--namespace");
+		args.add("-n");
 		args.add(namespace);
-		args.add("--user");
+		args.add("-u");
 		args.add(username);
-		args.add("--password");
+		args.add("-p");
 		args.add(password);
-		args.add("--instance-id");
+		args.add("-i");
 		args.add(instance);
+		args.add("-dim");
+		args.add(dimType);
+
 		if ((visibility != null) && !visibility.isEmpty()) {
-			args.add("--visibility");
+			args.add("-v");
 			args.add(visibility);
 		}
 
-		final Options options = new Options();
-		driver.applyOptions(options);
-
-		final String[] arguments = args.toArray(new String[] {});
-		final CommandLine commandLine = new BasicParser().parse(
-				options,
-				arguments);
-		driver.parseOptions(commandLine);
-		driver.run(arguments);
-	}
-
-	private void runHdfsIngest(
-			final File baseDir,
-			final String namespace,
-			final String visibility )
-			throws ParseException {
-		final AbstractCommandLineDriver driver = Operation.LOCAL_TO_HDFS_INGEST.getDriver();
-
-		final ArrayList<String> args = new ArrayList<String>();
-		args.add("--base");
-		args.add(baseDir.getAbsolutePath());
-		args.add("--zookeepers");
-		args.add(zookeeperUrl);
-		args.add("--namespace");
-		args.add(namespace);
-		args.add("--user");
-		args.add(username);
-		args.add("--password");
-		args.add(password);
-		args.add("--instance-id");
-		args.add(instance);
-		if ((visibility != null) && !visibility.isEmpty()) {
-			args.add("--visibility");
-			args.add(visibility);
+		if (clear) {
+			args.add("-c");
 		}
-		args.add("-hdfs");
-		args.add(hdfs);
-		args.add("-hdfsbase");
-		args.add(hdfsBase);
-		args.add("-jobtracker");
-		args.add(jobTracker);
 
-		final Options options = new Options();
-		driver.applyOptions(options);
+		if (ingestMethod.equals("hdfsingest")) {
+			args.add("-hdfs");
+			args.add(hdfs);
+			args.add("-hdfsbase");
+			args.add(hdfsBase);
+			args.add("-jobtracker");
+			args.add(jobTracker);
+		}
 
-		final String[] arguments = args.toArray(new String[] {});
-		final CommandLine commandLine = new BasicParser().parse(
-				options,
-				arguments);
-		driver.parseOptions(commandLine);
-		driver.run(arguments);
+		IngestMain.main(args.toArray(new String[] {}));
 	}
-
 }

@@ -36,6 +36,12 @@ public class GeoserverServiceClient
 						baseUrl));
 	}
 
+	public JSONObject getWorkspaces() {
+		final Response resp = geoserverService.getWorkspaces();
+		resp.bufferEntity();
+		return JSONObject.fromObject(resp.readEntity(String.class));
+	}
+
 	public boolean createWorkspace(
 			final String workspace ) {
 		final FormDataMultiPart multiPart = new FormDataMultiPart();
@@ -48,10 +54,16 @@ public class GeoserverServiceClient
 		return resp.getStatus() == Status.CREATED.getStatusCode();
 	}
 
-	public String[] getStyles() {
+	public boolean deleteWorkspace(
+			final String workspace ) {
+		final Response resp = geoserverService.deleteWorkspace(workspace);
+		return resp.getStatus() == Status.OK.getStatusCode();
+	}
+
+	public JSONObject getStyles() {
 		final Response resp = geoserverService.getStyles();
 		resp.bufferEntity();
-		return resp.readEntity(String[].class);
+		return JSONObject.fromObject(resp.readEntity(String.class));
 	}
 
 	public InputStream getStyle(
@@ -75,30 +87,36 @@ public class GeoserverServiceClient
 		return resp.getStatus() == Status.OK.getStatusCode();
 	}
 
-	public String[] getDatastores() {
+	public boolean deleteStyle(
+			final String styleName ) {
+		final Response resp = geoserverService.deleteStyle(styleName);
+		return resp.getStatus() == Status.OK.getStatusCode();
+	}
+
+	public JSONObject getDatastores() {
 		return getDatastores("");
 	}
 
-	public String[] getDatastores(
+	public JSONObject getDatastores(
 			final String workspace ) {
 		final Response resp = geoserverService.getDatastores(workspace);
-		resp.bufferEntity();
-		return resp.readEntity(String[].class);
+		return JSONObject.fromObject(resp.readEntity(String.class));
 	}
 
-	public InputStream getDatastore(
+	public JSONObject getDatastore(
 			final String datastoreName ) {
 		return getDatastore(
 				datastoreName,
 				"");
 	}
 
-	public InputStream getDatastore(
+	public JSONObject getDatastore(
 			final String datastoreName,
 			final String workspace ) {
-		return (InputStream) geoserverService.getDatastore(
+		return JSONObject.fromObject(geoserverService.getDatastore(
 				datastoreName,
-				workspace).getEntity();
+				workspace).readEntity(
+				String.class));
 	}
 
 	public boolean publishDatastore(
@@ -179,33 +197,50 @@ public class GeoserverServiceClient
 		return resp.getStatus() == Status.OK.getStatusCode();
 	}
 
-	public String[] getLayers() {
-		final Response resp = geoserverService.getLayers();
-		resp.bufferEntity();
-		return resp.readEntity(String[].class);
+	public boolean deleteDatastore(
+			final String datastore ) {
+		final Response resp = geoserverService.deleteDatastore(
+				datastore,
+				"");
+		return resp.getStatus() == Status.OK.getStatusCode();
 	}
 
-	public InputStream getLayer(
+	public boolean deleteDatastore(
+			final String datastore,
+			final String workspace ) {
+		final Response resp = geoserverService.deleteDatastore(
+				datastore,
+				workspace);
+		return resp.getStatus() == Status.OK.getStatusCode();
+	}
+
+	public JSONObject getLayers() {
+		final Response resp = geoserverService.getLayers();
+		return JSONObject.fromObject(resp.readEntity(String.class));
+	}
+
+	public JSONObject getLayer(
 			final String layerName ) {
-		return (InputStream) geoserverService.getLayer(
-				layerName).getEntity();
+		return JSONObject.fromObject(geoserverService.getLayer(
+				layerName).readEntity(
+				String.class));
 	}
 
 	public boolean publishLayer(
 			final String datastore,
 			final String defaultStyle,
-			final SimpleFeatureType featureType ) {
+			final String featureTypeName ) {
 		return publishLayer(
 				datastore,
 				defaultStyle,
-				featureType,
+				featureTypeName,
 				null);
 	}
 
 	public boolean publishLayer(
 			final String datastore,
 			final String defaultStyle,
-			final SimpleFeatureType featureType,
+			final String featureTypeName,
 			final String workspace ) {
 		final FormDataMultiPart multiPart = new FormDataMultiPart();
 
@@ -223,7 +258,7 @@ public class GeoserverServiceClient
 					workspace);
 		}
 
-		final String json = createFeatureTypeJson(featureType);
+		final String json = createFeatureTypeJson(featureTypeName);
 
 		multiPart.field(
 				"featureType",
@@ -233,46 +268,20 @@ public class GeoserverServiceClient
 		return resp.getStatus() == Status.OK.getStatusCode();
 	}
 
+	public boolean deleteLayer(
+			final String layerName ) {
+		final Response resp = geoserverService.deleteLayer(layerName);
+		return resp.getStatus() == Status.OK.getStatusCode();
+	}
+
 	private String createFeatureTypeJson(
-			final SimpleFeatureType featureType ) {
+			final String featureTypeName ) {
 
 		final JSONObject featTypeJson = new JSONObject();
 
 		featTypeJson.put(
 				"name",
-				featureType.getTypeName());
-		featTypeJson.put(
-				"nativeName",
-				featureType.getTypeName());
-		featTypeJson.put(
-				"title",
-				featureType.getTypeName());
-		featTypeJson.put(
-				"srs",
-				"EPSG:4326");
-
-		final JSONObject attribsJson = new JSONObject();
-		final JSONArray attribArray = new JSONArray();
-		for (final AttributeDescriptor attribDesc : featureType.getAttributeDescriptors()) {
-
-			final JSONObject attribJson = new JSONObject();
-			attribJson.put(
-					"name",
-					attribDesc.getLocalName());
-			attribJson.put(
-					"binding",
-					attribDesc.getType().getBinding().getName());
-
-			attribArray.add(attribJson);
-		}
-
-		attribsJson.put(
-				"attribute",
-				attribArray);
-
-		featTypeJson.put(
-				"attributes",
-				attribsJson);
+				featureTypeName);
 
 		final JSONObject jsonObj = new JSONObject();
 		jsonObj.put(

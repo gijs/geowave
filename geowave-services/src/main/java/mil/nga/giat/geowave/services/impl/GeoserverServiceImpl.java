@@ -3,12 +3,20 @@ package mil.nga.giat.geowave.services.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.servlet.ServletConfig;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -25,6 +33,7 @@ import javax.ws.rs.core.Response.Status;
 
 import mil.nga.giat.geowave.services.GeoserverService;
 import mil.nga.giat.geowave.services.utils.ServiceUtils;
+import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.io.IOUtils;
@@ -39,6 +48,7 @@ public class GeoserverServiceImpl implements
 		GeoserverService
 {
 	private final static Logger log = Logger.getLogger(GeoserverServiceImpl.class);
+	private final static int defaultIndentation = 2;
 
 	private final String geoserverUrl;
 	private final String geoserverUser;
@@ -68,6 +78,87 @@ public class GeoserverServiceImpl implements
 	}
 
 	@Override
+	@GET
+	@Path("/workspaces")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getWorkspaces() {
+
+		final Client client = ClientBuilder.newClient().register(
+				HttpAuthenticationFeature.basic(
+						geoserverUser,
+						geoserverPass));
+		final WebTarget target = client.target(geoserverUrl);
+
+		final Response resp = target.path(
+				"geoserver/rest/workspaces.json").request().get();
+
+		if (resp.getStatus() == Status.OK.getStatusCode()) {
+
+			resp.bufferEntity();
+
+			// get the workspace names
+			final JSONArray workspaceArray = getArrayEntryNames(
+					JSONObject.fromObject(resp.readEntity(String.class)),
+					"workspaces",
+					"workspace");
+
+			final JSONObject workspacesObj = new JSONObject();
+			workspacesObj.put(
+					"workspaces",
+					workspaceArray);
+
+			return Response.ok(
+					workspacesObj.toString(defaultIndentation)).build();
+		}
+
+		return resp;
+	}
+
+	private JSONArray getArrayEntryNames(
+			JSONObject jsonObj,
+			final String firstKey,
+			final String secondKey ) {
+		// get the top level object/array
+		if (jsonObj.get(firstKey) instanceof JSONObject) {
+			jsonObj = jsonObj.getJSONObject(firstKey);
+		}
+		else if (jsonObj.get(firstKey) instanceof JSONArray) {
+			final JSONArray tempArray = jsonObj.getJSONArray(firstKey);
+			if (tempArray.size() > 0) {
+				jsonObj = tempArray.getJSONObject(0);
+			}
+		}
+
+		// get the sub level object/array
+		final JSONArray entryArray = new JSONArray();
+		if (jsonObj.get(secondKey) instanceof JSONObject) {
+			final JSONObject entry = new JSONObject();
+			entry.put(
+					"name",
+					jsonObj.getJSONObject(
+							secondKey).getString(
+							"name"));
+			entryArray.add(entry);
+		}
+		else if (jsonObj.get(secondKey) instanceof JSONArray) {
+			final JSONArray entries = jsonObj.getJSONArray(secondKey);
+			for (int i = 0; i < entries.size(); i++) {
+				final JSONObject entry = new JSONObject();
+				entry.put(
+						"name",
+						entries.getJSONObject(
+								i).getString(
+								"name"));
+				entryArray.add(entry);
+			}
+		}
+		return entryArray;
+	}
+
+	@Override
+	@POST
+	@Path("/workspaces")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response createWorkspace(
 			final FormDataMultiPart multiPart ) {
 
@@ -88,6 +179,27 @@ public class GeoserverServiceImpl implements
 	}
 
 	@Override
+	@DELETE
+	@Path("/workspaces/{workspace}")
+	public Response deleteWorkspace(
+			@PathParam("workspace") final String workspace ) {
+
+		final Client client = ClientBuilder.newClient().register(
+				HttpAuthenticationFeature.basic(
+						geoserverUser,
+						geoserverPass));
+		final WebTarget target = client.target(geoserverUrl);
+
+		return target.path(
+				"geoserver/rest/workspaces/" + workspace).queryParam(
+				"recurse",
+				"true").request().delete();
+	}
+
+	@Override
+	@GET
+	@Path("/styles")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getStyles() {
 
 		final Client client = ClientBuilder.newClient().register(
@@ -103,22 +215,28 @@ public class GeoserverServiceImpl implements
 
 			resp.bufferEntity();
 
-			final Pattern p = Pattern.compile("name\".\"([^\"]+)");
-			final Matcher m = p.matcher(resp.readEntity(String.class));
+			// get the style names
+			final JSONArray styleArray = getArrayEntryNames(
+					JSONObject.fromObject(resp.readEntity(String.class)),
+					"styles",
+					"style");
 
-			final ArrayList<String> styleNames = new ArrayList<String>();
-			while (m.find()) {
-				styleNames.add(m.group(1));
-			}
+			final JSONObject stylesObj = new JSONObject();
+			stylesObj.put(
+					"styles",
+					styleArray);
 
 			return Response.ok(
-					styleNames.toArray(new String[styleNames.size()])).build();
+					stylesObj.toString(defaultIndentation)).build();
 		}
 
 		return resp;
 	}
 
 	@Override
+	@GET
+	@Path("/styles/{styleName}")
+	@Produces(MediaType.APPLICATION_OCTET_STREAM)
 	public Response getStyle(
 			@PathParam("styleName") final String styleName ) {
 
@@ -145,6 +263,10 @@ public class GeoserverServiceImpl implements
 	}
 
 	@Override
+	@POST
+	@Path("/styles")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public Response publishStyle(
 			final FormDataMultiPart multiPart ) {
 
@@ -167,9 +289,6 @@ public class GeoserverServiceImpl implements
 				target.path(
 						"geoserver/rest/styles").request().post(
 						Entity.entity(
-								// "<style><name>" + styleName +
-								// "</name><filename>" + styleName +
-								// ".sld</filename></style>",
 								"{'style':{'name':'" + styleName + "','filename':'" + styleName + ".sld'}}",
 								MediaType.APPLICATION_JSON));
 
@@ -190,6 +309,25 @@ public class GeoserverServiceImpl implements
 	}
 
 	@Override
+	@DELETE
+	@Path("/styles/{styleName}")
+	public Response deleteStyle(
+			@PathParam("styleName") final String styleName ) {
+
+		final Client client = ClientBuilder.newClient().register(
+				HttpAuthenticationFeature.basic(
+						geoserverUser,
+						geoserverPass));
+		final WebTarget target = client.target(geoserverUrl);
+
+		return target.path(
+				"geoserver/rest/styles/" + styleName).request().delete();
+	}
+
+	@Override
+	@GET
+	@Path("/datastores")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getDatastores(
 			@DefaultValue("") @QueryParam("workspace") String customWorkspace ) {
 
@@ -208,22 +346,92 @@ public class GeoserverServiceImpl implements
 
 			resp.bufferEntity();
 
-			final Pattern p = Pattern.compile("name\".\"([^\"]+)");
-			final Matcher m = p.matcher(resp.readEntity(String.class));
+			// get the datastore names
+			final JSONArray datastoreArray = getArrayEntryNames(
+					JSONObject.fromObject(resp.readEntity(String.class)),
+					"dataStores",
+					"dataStore");
 
-			final ArrayList<String> datastoreNames = new ArrayList<String>();
-			while (m.find()) {
-				datastoreNames.add(m.group(1));
+			final JSONArray datastores = new JSONArray();
+			for (int i = 0; i < datastoreArray.size(); i++) {
+				final String name = datastoreArray.getJSONObject(
+						i).getString(
+						"name");
+
+				final JSONObject dsObj = JSONObject.fromObject(
+						getDatastore(
+								name,
+								customWorkspace).getEntity()).getJSONObject(
+						"dataStore");
+
+				// only process the GeoWave datastores
+				if ((dsObj != null) && dsObj.containsKey("type") && dsObj.getString(
+						"type").equals(
+						"GeoWave Datastore")) {
+
+					final JSONObject datastore = new JSONObject();
+
+					datastore.put(
+							"name",
+							name);
+
+					JSONArray entryArray = null;
+					if (dsObj.get("connectionParameters") instanceof JSONObject) {
+						entryArray = dsObj.getJSONObject(
+								"connectionParameters").getJSONArray(
+								"entry");
+					}
+					else if (dsObj.get("connectionParameters") instanceof JSONArray) {
+						entryArray = dsObj.getJSONArray(
+								"connectionParameters").getJSONObject(
+								0).getJSONArray(
+								"entry");
+					}
+
+					// report zookeeper servers, instance name and namespace for
+					// each datastore
+					for (int j = 0; j < entryArray.size(); j++) {
+						final JSONObject entry = entryArray.getJSONObject(j);
+						final String key = entry.getString("@key");
+						final String value = entry.getString("$");
+
+						if (key.equals("ZookeeperServers")) {
+							datastore.put(
+									"ZookeeperServers",
+									value);
+						}
+						else if (key.equals("InstanceName")) {
+							datastore.put(
+									"InstanceName",
+									value);
+						}
+						else if (key.equals("Namespace")) {
+							datastore.put(
+									"Namespace",
+									value);
+						}
+					}
+
+					datastores.add(datastore);
+				}
 			}
 
+			final JSONObject dsObj = new JSONObject();
+			dsObj.put(
+					"dataStores",
+					datastores);
+
 			return Response.ok(
-					datastoreNames.toArray(new String[datastoreNames.size()])).build();
+					dsObj.toString(defaultIndentation)).build();
 		}
 
 		return resp;
 	}
 
 	@Override
+	@GET
+	@Path("/datastores/{datastoreName}")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getDatastore(
 			@PathParam("datastoreName") final String datastoreName,
 			@DefaultValue("") @QueryParam("workspace") String customWorkspace ) {
@@ -240,18 +448,30 @@ public class GeoserverServiceImpl implements
 				"geoserver/rest/workspaces/" + customWorkspace + "/datastores/" + datastoreName + ".json").request().get();
 
 		if (resp.getStatus() == Status.OK.getStatusCode()) {
-			final InputStream inStream = (InputStream) resp.getEntity();
+			JSONObject datastore = null;
+			try {
+				datastore = JSONObject.fromObject(IOUtils.toString((InputStream) resp.getEntity()));
+			}
+			catch (final IOException e) {
+				log.error(
+						"Unable to parse datastore.",
+						e);
+			}
 
-			return Response.ok(
-					inStream).header(
-					"Content-Disposition",
-					"attachment; filename=\"" + datastoreName + "\"").build();
+			if (datastore != null) {
+				return Response.ok(
+						datastore.toString(defaultIndentation)).build();
+			}
 		}
 
 		return resp;
 	}
 
 	@Override
+	@POST
+	@Path("/datastores")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public Response publishDatastore(
 			final FormDataMultiPart multiPart ) {
 
@@ -312,6 +532,27 @@ public class GeoserverServiceImpl implements
 		}
 
 		return resp;
+	}
+
+	@Override
+	@DELETE
+	@Path("/datastores/{datastoreName}")
+	public Response deleteDatastore(
+			@PathParam("datastoreName") final String datastoreName,
+			@DefaultValue("") @QueryParam("workspace") String customWorkspace ) {
+
+		customWorkspace = (customWorkspace.equals("")) ? defaultWorkspace : customWorkspace;
+
+		final Client client = ClientBuilder.newClient().register(
+				HttpAuthenticationFeature.basic(
+						geoserverUser,
+						geoserverPass));
+		final WebTarget target = client.target(geoserverUrl);
+
+		return target.path(
+				"geoserver/rest/workspaces/" + customWorkspace + "/datastores/" + datastoreName).queryParam(
+				"recurse",
+				"true").request().delete();
 	}
 
 	private String createDatastoreJson(
@@ -377,6 +618,9 @@ public class GeoserverServiceImpl implements
 	}
 
 	@Override
+	@GET
+	@Path("/layers")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getLayers() {
 
 		final Client client = ClientBuilder.newClient().register(
@@ -392,22 +636,129 @@ public class GeoserverServiceImpl implements
 
 			resp.bufferEntity();
 
-			final Pattern p = Pattern.compile("name\".\"([^\"]+)");
-			final Matcher m = p.matcher(resp.readEntity(String.class));
+			// get the datastore names
+			final JSONArray layerArray = getArrayEntryNames(
+					JSONObject.fromObject(resp.readEntity(String.class)),
+					"layers",
+					"layer");
 
-			final ArrayList<String> layerNames = new ArrayList<String>();
-			while (m.find()) {
-				layerNames.add(m.group(1));
+			final Map<String, List<String>> namespaceLayersMap = new HashMap<String, List<String>>();
+			for (int i = 0; i < layerArray.size(); i++) {
+				final String name = layerArray.getJSONObject(
+						i).getString(
+						"name");
+
+				final String layer = (String) getLayer(
+						name).getEntity();
+
+				// get the workspace and name for each datastore
+				String workspace = null;
+				String datastoreName = null;
+
+				final Pattern p = Pattern.compile("workspaces/(.*?)/datastores/(.*?)/");
+				final Matcher m = p.matcher(layer);
+
+				if (m.find()) {
+					workspace = m.group(1);
+					datastoreName = m.group(2);
+				}
+
+				if ((datastoreName != null) && (workspace != null)) {
+
+					final JSONObject datastore = JSONObject.fromObject(
+							getDatastore(
+									datastoreName,
+									workspace).getEntity()).getJSONObject(
+							"dataStore");
+
+					// only process GeoWave layers
+					if ((datastore != null) && datastore.containsKey("type") && datastore.getString(
+							"type").equals(
+							"GeoWave Datastore")) {
+
+						JSONArray entryArray = null;
+						if (datastore.get("connectionParameters") instanceof JSONObject) {
+							entryArray = datastore.getJSONObject(
+									"connectionParameters").getJSONArray(
+									"entry");
+						}
+						else if (datastore.get("connectionParameters") instanceof JSONArray) {
+							entryArray = datastore.getJSONArray(
+									"connectionParameters").getJSONObject(
+									0).getJSONArray(
+									"entry");
+						}
+
+						// group layers by namespace
+						for (int j = 0; j < entryArray.size(); j++) {
+							final JSONObject entry = entryArray.getJSONObject(j);
+							final String key = entry.getString("@key");
+							final String value = entry.getString("$");
+
+							if (key.equals("Namespace")) {
+								if (namespaceLayersMap.containsKey(value)) {
+									namespaceLayersMap.get(
+											value).add(
+											name);
+								}
+								else {
+									final ArrayList<String> layers = new ArrayList<String>();
+									layers.add(name);
+									namespaceLayersMap.put(
+											value,
+											layers);
+								}
+								break;
+							}
+						}
+					}
+				}
 			}
 
+			// create the json object with layers sorted by namespace
+			final JSONArray layersArray = new JSONArray();
+			final Set<String> namespaces = namespaceLayersMap.keySet();
+			for (final String namespace : namespaces) {
+				final JSONArray layers = new JSONArray();
+
+				for (int i = 0; i < namespaceLayersMap.get(
+						namespace).size(); i++) {
+					final JSONObject layerObj = new JSONObject();
+					layerObj.put(
+							"name",
+							namespaceLayersMap.get(
+									namespace).get(
+									i));
+					layers.add(layerObj);
+				}
+
+				final JSONObject layersObj = new JSONObject();
+				layersObj.put(
+						"namespace",
+						namespace);
+				layersObj.put(
+						"layers",
+						layers);
+
+				layersArray.add(layersObj);
+			}
+
+			final JSONObject layersObj = new JSONObject();
+			layersObj.put(
+					"layers",
+					layersArray);
+
 			return Response.ok(
-					layerNames.toArray(new String[layerNames.size()])).build();
+					layersObj.toString(defaultIndentation)).build();
 		}
 
 		return resp;
 	}
 
 	@Override
+	@GET
+	@Path("/layers/{layerName}")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getLayer(
 			@PathParam("layerName") final String layerName ) {
 
@@ -421,18 +772,30 @@ public class GeoserverServiceImpl implements
 				"geoserver/rest/layers/" + layerName + ".json").request().get();
 
 		if (resp.getStatus() == Status.OK.getStatusCode()) {
-			final InputStream inStream = (InputStream) resp.getEntity();
+			JSONObject layer = null;
+			try {
+				layer = JSONObject.fromObject(IOUtils.toString((InputStream) resp.getEntity()));
+			}
+			catch (final IOException e) {
+				log.error(
+						"Unable to parse layer.",
+						e);
+			}
 
-			return Response.ok(
-					inStream).header(
-					"Content-Disposition",
-					"attachment; filename=\"" + layerName + "\"").build();
+			if (layer != null) {
+				return Response.ok(
+						layer.toString(defaultIndentation)).build();
+			}
 		}
 
 		return resp;
 	}
 
 	@Override
+	@POST
+	@Path("/layers")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public Response publishLayer(
 			final FormDataMultiPart multiPart ) {
 
@@ -469,7 +832,6 @@ public class GeoserverServiceImpl implements
 						geoserverPass));
 		final WebTarget target = client.target(geoserverUrl);
 
-		// upload the style to geoserver
 		Response resp = target.path(
 				"geoserver/rest/workspaces/" + customWorkspace + "/datastores/" + datastore + "/featuretypes").request().post(
 				Entity.entity(
@@ -483,9 +845,25 @@ public class GeoserverServiceImpl implements
 		resp = target.path(
 				"geoserver/rest/layers/" + layerName).request().put(
 				Entity.entity(
-						"{'layer':{'defaultStyle':{'name':'" + defaultStyle + "'}'}}",
+						"{'layer':{'defaultStyle':{'name':'" + defaultStyle + "'}}}",
 						MediaType.APPLICATION_JSON));
 
 		return Response.ok().build();
+	}
+
+	@Override
+	@DELETE
+	@Path("/layers/{layer}")
+	public Response deleteLayer(
+			@PathParam("layer") final String layerName ) {
+
+		final Client client = ClientBuilder.newClient().register(
+				HttpAuthenticationFeature.basic(
+						geoserverUser,
+						geoserverPass));
+		final WebTarget target = client.target(geoserverUrl);
+
+		return target.path(
+				"geoserver/rest/layers/" + layerName).request().delete();
 	}
 }

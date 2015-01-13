@@ -1,6 +1,7 @@
 package mil.nga.giat.geowave.services;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -18,12 +19,22 @@ import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 public interface GeoserverService
 {
 
+	@GET
+	@Path("/workspaces")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getWorkspaces();
+
 	@POST
 	@Path("/workspaces")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public Response createWorkspace(
 			final FormDataMultiPart multiPart );
+
+	@DELETE
+	@Path("/workspaces/{workspace}")
+	public Response deleteWorkspace(
+			@PathParam("workspace") final String workspace );
 
 	@GET
 	@Path("/styles")
@@ -33,7 +44,6 @@ public interface GeoserverService
 	@GET
 	@Path("/styles/{styleName}")
 	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	@Consumes(MediaType.APPLICATION_JSON)
 	public Response getStyle(
 			@PathParam("styleName") final String styleName );
 
@@ -44,6 +54,11 @@ public interface GeoserverService
 	public Response publishStyle(
 			final FormDataMultiPart multiPart );
 
+	@DELETE
+	@Path("/styles/{styleName}")
+	public Response deleteStyle(
+			@PathParam("styleName") final String styleName );
+
 	@GET
 	@Path("/datastores")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -52,8 +67,7 @@ public interface GeoserverService
 
 	@GET
 	@Path("/datastores/{datastoreName}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getDatastore(
 			@PathParam("datastoreName") final String datastoreName,
 			@DefaultValue("") @QueryParam("workspace") String customWorkspace );
@@ -65,6 +79,12 @@ public interface GeoserverService
 	public Response publishDatastore(
 			final FormDataMultiPart multiPart );
 
+	@DELETE
+	@Path("/datastores/{datastoreName}")
+	public Response deleteDatastore(
+			@PathParam("datastoreName") final String datastoreName,
+			@DefaultValue("") @QueryParam("workspace") String customWorkspace );
+
 	@GET
 	@Path("/layers")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -72,8 +92,7 @@ public interface GeoserverService
 
 	@GET
 	@Path("/layers/{layerName}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getLayer(
 			@PathParam("layerName") final String layerName );
 
@@ -83,5 +102,10 @@ public interface GeoserverService
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	public Response publishLayer(
 			final FormDataMultiPart multiPart );
+
+	@DELETE
+	@Path("/layers/{layer}")
+	public Response deleteLayer(
+			@PathParam("layer") final String layerName );
 
 }

@@ -387,36 +387,6 @@ public class GeowaveUtils
 	}
 
 	/**
-	 * Clear locality group.
-	 * 
-	 * @param namespace
-	 * @param index
-	 * @param adapter
-	 * @throws AccumuloException
-	 * @throws AccumuloSecurityException
-	 * @throws IOException
-	 * @throws TableNotFoundException
-	 */
-	public static void clearLocalityGroup(
-			Connector connector,
-			String namespace,
-			Index index,
-			DataAdapter<?> adapter )
-			throws AccumuloException,
-			AccumuloSecurityException,
-			IOException,
-			TableNotFoundException {
-		AccumuloOperations operations = new BasicAccumuloOperations(
-				connector,
-				namespace);
-		// get unqualified table name
-		String tableName = StringUtils.stringFromBinary(index.getId().getBytes());
-		operations.clearLocalityGroup(
-				tableName,
-				adapter.getAdapterId().getBytes());
-	}
-
-	/**
 	 * Get number of entries for a data adapter in an index.
 	 * 
 	 * @param namespace
@@ -645,60 +615,5 @@ public class GeowaveUtils
 
 		@Override
 		public void remove() {}
-	}
-
-	public static void main(
-			final String[] args ) {
-
-		final Logger log = Logger.getLogger(GeowaveUtils.class);
-		log.setLevel(Level.ALL);
-
-		final String zookeeperUrl = System.getProperty("zookeeperUrl");
-		final String instance = System.getProperty("instance");
-		final String username = System.getProperty("username");
-		final String password = System.getProperty("password");
-
-		Connector connector = null;
-		try {
-			connector = new ConnectorPool().getConnector(
-					zookeeperUrl,
-					instance,
-					username,
-					password);
-		}
-		catch (AccumuloException | AccumuloSecurityException e) {
-			log.error(
-					"Could not create the Accumulo Connector. ",
-					e);
-		}
-
-		final String namespace = GeowaveUtils.getNamespaces(
-				connector).get(
-				0);
-
-		log.info("Namespace: " + namespace);
-
-		List<DataAdapter<?>> dataAdapters = GeowaveUtils.getDataAdapters(
-				connector,
-				"featureTest_vector");
-
-		final String dataAdapterName = dataAdapters.get(
-				0).getAdapterId().getString();
-		final String dataAdapterType = dataAdapters.get(
-				0).getClass().getName();
-
-		log.info("  Data Adapter: [" + dataAdapterName + "], [" + dataAdapterType.substring(dataAdapterType.lastIndexOf('.') + 1) + "]");
-
-		List<Index> indices = GeowaveUtils.getIndices(
-				connector,
-				"featureTest_vector");
-
-		final String indexName = indices.get(
-				0).getId().getString();
-		final String indexType = indices.get(
-				0).getClass().getName();
-
-		log.info("  Index: [" + indexName + "]");
-
 	}
 }

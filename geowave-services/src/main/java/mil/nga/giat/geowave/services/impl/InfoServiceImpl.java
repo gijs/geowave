@@ -1,12 +1,12 @@
 package mil.nga.giat.geowave.services.impl;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
 
 import javax.servlet.ServletConfig;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -20,6 +20,8 @@ import mil.nga.giat.geowave.services.utils.ServiceUtils;
 import mil.nga.giat.geowave.store.adapter.DataAdapter;
 import mil.nga.giat.geowave.store.index.Index;
 import mil.nga.giat.geowave.utils.GeowaveUtils;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
 
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
@@ -33,6 +35,7 @@ public class InfoServiceImpl implements
 		InfoService
 {
 	private final static Logger log = Logger.getLogger(InfoServiceImpl.class);
+	private final static int defaultIndentation = 2;
 
 	private final String zookeeperUrl;
 	private final String instance;
@@ -78,44 +81,80 @@ public class InfoServiceImpl implements
 
 	// lists the namespaces in geowave
 	@Override
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("/namespaces")
 	public Response getNamespaces() {
 		final Collection<String> namespaces = GeowaveUtils.getNamespaces(connector);
+		final JSONArray namespacesArray = new JSONArray();
+		for (final String namespace : namespaces) {
+			final JSONObject namespaceObj = new JSONObject();
+			namespaceObj.put(
+					"name",
+					namespace);
+			namespacesArray.add(namespaceObj);
+		}
+		final JSONObject namespacesObj = new JSONObject();
+		namespacesObj.put(
+				"namespaces",
+				namespacesArray);
 		return Response.ok(
-				namespaces.toArray(new String[namespaces.size()])).build();
+				namespacesObj.toString(defaultIndentation)).build();
 	}
 
 	// lists the indices associated with the given namespace
 	@Override
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("/namespaces/{namespace}/indices")
 	public Response getIndices(
 			@PathParam("namespace") final String namespace ) {
 		final List<Index> indices = GeowaveUtils.getIndices(
 				connector,
 				namespace);
-		final List<String> indexNames = new ArrayList<String>();
+		final JSONArray indexNames = new JSONArray();
 		for (final Index index : indices) {
 			if ((index != null) && (index.getId() != null)) {
-				indexNames.add(index.getId().getString());
+				final JSONObject indexObj = new JSONObject();
+				indexObj.put(
+						"name",
+						index.getId().getString());
+				indexNames.add(indexObj);
 			}
 		}
+		final JSONObject indicesObj = new JSONObject();
+		indicesObj.put(
+				"indices",
+				indexNames);
 		return Response.ok(
-				indexNames.toArray(new String[indexNames.size()])).build();
+				indicesObj.toString(defaultIndentation)).build();
 	}
 
 	// lists the adapters associated with the given namespace
 	@Override
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("/namespaces/{namespace}/adapters")
 	public Response getAdapters(
 			@PathParam("namespace") final String namespace ) {
 		final Collection<DataAdapter<?>> dataAdapters = GeowaveUtils.getDataAdapters(
 				connector,
 				namespace);
-		final List<String> dataAdapterNames = new ArrayList<String>();
+		final JSONArray dataAdapterNames = new JSONArray();
 		for (final DataAdapter<?> dataAdapter : dataAdapters) {
 			if ((dataAdapter != null) && (dataAdapter.getAdapterId() != null)) {
-				dataAdapterNames.add(dataAdapter.getAdapterId().getString());
+				final JSONObject adapterObj = new JSONObject();
+				adapterObj.put(
+						"name",
+						dataAdapter.getAdapterId().getString());
+				dataAdapterNames.add(adapterObj);
 			}
 		}
+		final JSONObject dataAdaptersObj = new JSONObject();
+		dataAdaptersObj.put(
+				"adapters",
+				dataAdapterNames);
 		return Response.ok(
-				dataAdapterNames.toArray(new String[dataAdapterNames.size()])).build();
+				dataAdaptersObj.toString(defaultIndentation)).build();
 	}
-
 }
