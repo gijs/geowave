@@ -89,7 +89,7 @@
 						<goals>
 							<goal>unpack</goal>
 						</goals>
-						<phase>package</phase>
+						<phase>pre-integration-test</phase>
 						<configuration>
 							<artifactItems>
 								<artifactItem>
@@ -108,7 +108,7 @@
 									<type>war</type>
 									<overWrite>false</overWrite>
 									<outputDirectory>${project.build.directory}/geoserver</outputDirectory>
-									<excludes>**/*jai*.jar</excludes>
+									<excludes>**\/*2.7-SNAPSHOT.jar</excludes>
 								</artifactItem>
 							</artifactItems>
 						</configuration>
@@ -118,7 +118,7 @@
 						<goals>
 							<goal>copy</goal>
 						</goals>
-						<phase>package</phase>
+						<phase>pre-integration-test</phase>
 						<configuration>
 							<artifactItems>
 								<artifactItem>
@@ -163,9 +163,6 @@
 									<overWrite>true</overWrite>
 									<outputDirectory>${project.build.directory}/geoserver/WEB-INF/lib</outputDirectory>
 								</artifactItem>
-								<!-- <artifactItem> <groupId>mil.nga.giat</groupId> <artifactId>geowave-vector</artifactId> 
-									<version>${project.version}</version> <overWrite>true</overWrite> <outputDirectory>${project.build.directory}/geoserver/WEB-INF/lib</outputDirectory> 
-									</artifactItem> -->
 							</artifactItems>
 						</configuration>
 					</execution>
