@@ -287,10 +287,6 @@ public class GeoWaveTestEnvironment
 			gsWebapp.setContextPath(GEOSERVER_CONTEXT_PATH);
 			gsWebapp.setWar(GEOSERVER_WAR_DIR);
 
-			// delete the data directory
-			FileUtils.deleteDirectory(new File(
-					GEOSERVER_WAR_DIR + "/data"));
-
 			final WebAppClassLoader classLoader = new WebAppClassLoader(
 					gsWebapp);
 			classLoader.addClassPath(System.getProperty(
